@@ -34,14 +34,14 @@ resource "aws_key_pair" "this" {
 
 resource "aws_instance" "this" {
   ami           = data.aws_ami.this.id
-  instance_type = "t2.micro"
+  instance_type = "t3.micro"
 
   associate_public_ip_address = true
   subnet_id     = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
 
   key_name = aws_key_pair.this.key_name
-
+  iam_instance_profile = aws_iam_instance_profile.grafana_profile.name
   tags = {
     Name = "mate-aws-grafana-lab"
   }
@@ -54,10 +54,28 @@ resource "aws_instance" "this" {
 ######## Write your code here -> #############
 ##############################################
 
-# 1 - create policy 
+# 1 - create policy
+resource "aws_iam_policy" "policy" {
+  name        = "test_policy"
+  path        = "/"
+  description = "My test policy"
+  policy = file("./grafana-policy.json")
+}
 
-# 2 - create role 
+# 2 - create role
+resource "aws_iam_role" "grafana_role" {
+  name = "grafana_role"
 
-# 3 - create policy to role attachment 
+ assume_role_policy = file("./grafana-role-asume-policy.json")
+}
 
-# 4 - create instance profile 
+# 3 - create policy to role attachment
+resource "aws_iam_role_policy_attachment" "test-attach" {
+  role       = aws_iam_role.grafana_role.name
+  policy_arn = aws_iam_policy.policy.arn
+}
+# 4 - create instance profile
+resource "aws_iam_instance_profile" "grafana_profile" {
+  name = "grafana_profile"
+  role = aws_iam_role.grafana_role.name
+}
